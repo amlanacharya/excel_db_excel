@@ -8,6 +8,7 @@ from openpyxl import load_workbook, Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.utils.cell import coordinate_from_string
+from copy import copy
 
 # ============================================================================
 # Configuration
@@ -43,136 +44,30 @@ def create_excel_file_map(excel_files):
             excel_file_map[key] = base_name
     return excel_file_map
 
-def extract_cell_formatting(cell, enhanced_color=True):
-    """Extract formatting details from a cell for storage.
-    
-    Args:
-        cell: The cell object to extract formatting from
-        enhanced_color: Whether to use enhanced color handling (default: True)
+def copy_cell_formatting(source_cell, target_cell):
+    """Copy all formatting properties from source cell to target cell."""
+    try:
+        # Copy font properties
+        target_cell.font = copy(source_cell.font)
         
-    Returns:
-        Dictionary with formatting information
-    """
-    if not enhanced_color:
-        # Simple formatting for Phase 1
-        return {
-            "number_format": cell.number_format,
-            "font": {
-                "name": cell.font.name,
-                "size": cell.font.size,
-                "bold": cell.font.bold,
-                "italic": cell.font.italic,
-                "underline": cell.font.underline,
-                "color": str(cell.font.color.rgb) if cell.font.color and cell.font.color.rgb else None
-            },
-            "fill": {
-                "fill_type": cell.fill.fill_type,
-                "start_color": str(cell.fill.start_color.rgb) if cell.fill.start_color and cell.fill.start_color.rgb else None,
-                "end_color": str(cell.fill.end_color.rgb) if cell.fill.end_color and cell.fill.end_color.rgb else None
-            },
-            "alignment": {
-                "horizontal": cell.alignment.horizontal,
-                "vertical": cell.alignment.vertical,
-                "wrap_text": cell.alignment.wrap_text
-            },
-            "border": {
-                "top": {
-                    "style": cell.border.top.style if cell.border.top else None,
-                    "color": str(cell.border.top.color.rgb) if cell.border.top and cell.border.top.color and cell.border.top.color.rgb else None
-                },
-                "bottom": {
-                    "style": cell.border.bottom.style if cell.border.bottom else None,
-                    "color": str(cell.border.bottom.color.rgb) if cell.border.bottom and cell.border.bottom.color and cell.border.bottom.color.rgb else None
-                },
-                "left": {
-                    "style": cell.border.left.style if cell.border.left else None,
-                    "color": str(cell.border.left.color.rgb) if cell.border.left and cell.border.left.color and cell.border.left.color.rgb else None
-                },
-                "right": {
-                    "style": cell.border.right.style if cell.border.right else None,
-                    "color": str(cell.border.right.color.rgb) if cell.border.right and cell.border.right.color and cell.border.right.color.rgb else None
-                }
-            }
-        }
-    else:
-        # Enhanced formatting with better color handling for Phase 2
-        # Extract font color with enhanced handling
-        font_color = None
-        try:
-            if cell.font.color:
-                if hasattr(cell.font.color, 'rgb') and cell.font.color.rgb:
-                    # For RGB colors, use a normalized format
-                    if isinstance(cell.font.color.rgb, str):
-                        font_color = {'type': 'rgb', 'value': cell.font.color.rgb}
-                    else:
-                        font_color = {'type': 'rgb', 'value': 'FF000000'}  # Default to black if not a string
-                elif hasattr(cell.font.color, 'theme') and cell.font.color.theme is not None:
-                    # For theme colors
-                    font_color = {'type': 'theme', 'value': cell.font.color.theme}
-                elif hasattr(cell.font.color, 'indexed') and cell.font.color.indexed is not None:
-                    # For indexed colors
-                    font_color = {'type': 'indexed', 'value': cell.font.color.indexed}
-        except Exception as e:
-            print(f"Error extracting font color: {e}")
-            font_color = {'type': 'rgb', 'value': 'FF000000'}  # Default to black on error
+        # Copy fill properties
+        target_cell.fill = copy(source_cell.fill)
         
-        # Extract fill color with similar approach
-        fill_color = None
-        try:
-            if cell.fill and cell.fill.start_color:
-                if hasattr(cell.fill.start_color, 'rgb') and cell.fill.start_color.rgb:
-                    if isinstance(cell.fill.start_color.rgb, str):
-                        fill_color = {'type': 'rgb', 'value': cell.fill.start_color.rgb}
-                    else:
-                        fill_color = {'type': 'rgb', 'value': 'FFFFFFFF'}  # Default to white
-                elif hasattr(cell.fill.start_color, 'theme') and cell.fill.start_color.theme is not None:
-                    fill_color = {'type': 'theme', 'value': cell.fill.start_color.theme}
-                elif hasattr(cell.fill.start_color, 'indexed') and cell.fill.start_color.indexed is not None:
-                    fill_color = {'type': 'indexed', 'value': cell.fill.start_color.indexed}
-        except Exception as e:
-            print(f"Error extracting fill color: {e}")
-            fill_color = None
+        # Copy border properties
+        target_cell.border = copy(source_cell.border)
         
-        # Build formatting dictionary
-        return {
-            "number_format": cell.number_format,
-            "font": {
-                "name": cell.font.name,
-                "size": cell.font.size,
-                "bold": cell.font.bold,
-                "italic": cell.font.italic,
-                "underline": cell.font.underline,
-                "color": font_color
-            },
-            "fill": {
-                "fill_type": cell.fill.fill_type,
-                "start_color": fill_color,
-                "end_color": None  # Simplified to avoid similar issues with end color
-            },
-            "alignment": {
-                "horizontal": cell.alignment.horizontal,
-                "vertical": cell.alignment.vertical,
-                "wrap_text": cell.alignment.wrap_text
-            },
-            "border": {
-                "top": {
-                    "style": cell.border.top.style if cell.border.top else None,
-                    "color": None  # Simplified border color handling
-                },
-                "bottom": {
-                    "style": cell.border.bottom.style if cell.border.bottom else None,
-                    "color": None
-                },
-                "left": {
-                    "style": cell.border.left.style if cell.border.left else None,
-                    "color": None
-                },
-                "right": {
-                    "style": cell.border.right.style if cell.border.right else None,
-                    "color": None
-                }
-            }
-        }
+        # Copy number format
+        target_cell.number_format = source_cell.number_format
+        
+        # Copy protection
+        if source_cell.protection:
+            target_cell.protection = copy(source_cell.protection)
+        
+        # Copy alignment
+        target_cell.alignment = copy(source_cell.alignment)
+        
+    except Exception as e:
+        print(f"Error copying formatting from {source_cell.coordinate}: {e}")
 
 # ============================================================================
 # Formula Path Handling
@@ -180,13 +75,6 @@ def extract_cell_formatting(cell, enhanced_color=True):
 def fix_external_references(formula, excel_file_map):
     """
     Fix external references in Excel formulas.
-    
-    Args:
-        formula: The Excel formula string
-        excel_file_map: Dictionary mapping original filenames to new filenames
-        
-    Returns:
-        Updated formula with fixed paths
     """
     if not formula or not isinstance(formula, str):
         return formula
@@ -291,7 +179,6 @@ def fix_external_references(formula, excel_file_map):
 # ============================================================================
 def setup_database(db_path):
     """Create database and necessary tables."""
-    # Create a new database connection
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
@@ -323,7 +210,7 @@ def setup_database(db_path):
     )
     """)
     
-    # Create cells table
+    # Create cells table - simplified to only store value and formula status
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS cells (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -331,7 +218,6 @@ def setup_database(db_path):
         coordinate TEXT,
         value TEXT,
         is_formula BOOLEAN,
-        formatting TEXT,
         FOREIGN KEY (sheet_id) REFERENCES sheets (id),
         UNIQUE (sheet_id, coordinate)
     )
@@ -375,165 +261,12 @@ def insert_sheet(cursor, workbook_id, sheet_name, sheet_type, max_row, max_colum
                    (workbook_id, sheet_name))
     return cursor.fetchone()[0]
 
-def insert_cell(cursor, sheet_id, coordinate, value, is_formula, formatting):
-    """Insert cell data into the database."""
+def insert_cell(cursor, sheet_id, coordinate, value, is_formula):
+    """Insert cell data into the database (without formatting info)."""
     cursor.execute(
-        "INSERT OR REPLACE INTO cells (sheet_id, coordinate, value, is_formula, formatting) VALUES (?, ?, ?, ?, ?)",
-        (sheet_id, coordinate, value, is_formula, json.dumps(formatting))
+        "INSERT OR REPLACE INTO cells (sheet_id, coordinate, value, is_formula) VALUES (?, ?, ?, ?)",
+        (sheet_id, coordinate, value, is_formula)
     )
-
-# ============================================================================
-# Formatting Application Functions
-# ============================================================================
-def apply_formatting(cell, formatting_json):
-    """Apply formatting details from JSON to the cell."""
-    try:
-        # Parse the formatting JSON
-        fmt = json.loads(formatting_json)
-        
-        # Apply number format
-        if "number_format" in fmt:
-            cell.number_format = fmt["number_format"]
-        
-        # Apply font formatting
-        if "font" in fmt:
-            font_data = fmt["font"]
-            
-            # Handle font color with specific approach for each color type
-            font_color = None
-            if "color" in font_data and font_data["color"]:
-                color_info = font_data["color"]
-                if isinstance(color_info, dict) and "type" in color_info:
-                    # Enhanced color format
-                    if color_info["type"] == "rgb":
-                        # Use the RGB value directly, defaulting to black if issues
-                        if color_info["value"] and isinstance(color_info["value"], str):
-                            # Clean up the value to ensure proper format
-                            font_color = color_info["value"].strip()
-                            # Default to black for any problematic values
-                            if not font_color or not all(c in '0123456789ABCDEFabcdef' for c in font_color.replace('FF', '', 1)):
-                                font_color = '000000'
-                        else:
-                            font_color = '000000'  # Default to black
-                    else:
-                        # Default to black for theme or indexed colors
-                        font_color = '000000'
-                else:
-                    # Simple color format (string)
-                    font_color = color_info if isinstance(color_info, str) else '000000'
-            
-            # Create and apply the font
-            try:
-                cell.font = Font(
-                    name=font_data.get("name"),
-                    size=font_data.get("size"),
-                    bold=font_data.get("bold"),
-                    italic=font_data.get("italic"),
-                    underline=font_data.get("underline"),
-                    color=font_color
-                )
-            except Exception as e:
-                print(f"Error setting font for cell {cell.coordinate}: {e}")
-                # Apply font without color if there was an error
-                cell.font = Font(
-                    name=font_data.get("name"),
-                    size=font_data.get("size"),
-                    bold=font_data.get("bold"),
-                    italic=font_data.get("italic"),
-                    underline=font_data.get("underline")
-                )
-        
-        # Apply fill formatting
-        if "fill" in fmt:
-            fill_data = fmt["fill"]
-            fill_type = fill_data.get("fill_type")
-            
-            # Apply fill only if it's a valid fill type
-            if fill_type and fill_type not in ['none', None]:
-                # Get fill color
-                fill_color = None
-                start_color = fill_data.get("start_color")
-                
-                if start_color:
-                    if isinstance(start_color, dict) and "type" in start_color and "value" in start_color:
-                        # Enhanced color format
-                        if start_color["type"] == "rgb" and start_color["value"]:
-                            fill_color = start_color["value"]
-                    else:
-                        # Simple color format (string)
-                        fill_color = start_color
-                
-                # Apply the fill if we have a valid color
-                if fill_color:
-                    try:
-                        cell.fill = PatternFill(
-                            fill_type=fill_type,
-                            start_color=fill_color,
-                            end_color=fill_color  # Use same color for end
-                        )
-                    except Exception as e:
-                        print(f"Error applying fill for cell {cell.coordinate}: {e}")
-        
-        # Apply alignment formatting
-        if "alignment" in fmt:
-            align_data = fmt["alignment"]
-            cell.alignment = Alignment(
-                horizontal=align_data.get("horizontal"),
-                vertical=align_data.get("vertical"),
-                wrap_text=align_data.get("wrap_text")
-            )
-        
-        # Apply border formatting (simplified - just style without color)
-        if "border" in fmt:
-            border_data = fmt["border"]
-            
-            # Helper function to create a Side object
-            def create_side(side_data):
-                if not side_data or not side_data.get("style"):
-                    return None
-                return Side(style=side_data["style"])
-            
-            # Create border sides
-            top = create_side(border_data.get("top"))
-            bottom = create_side(border_data.get("bottom"))
-            left = create_side(border_data.get("left"))
-            right = create_side(border_data.get("right"))
-            
-            # Set the border if any sides are defined
-            if any([top, bottom, left, right]):
-                cell.border = Border(top=top or Side(), bottom=bottom or Side(),
-                                    left=left or Side(), right=right or Side())
-    
-    except Exception as e:
-        print(f"Error applying formatting to cell {cell.coordinate}: {e}")
-
-def apply_merged_cells(worksheet, merged_cells_json):
-    """Apply merged cell ranges to the worksheet."""
-    try:
-        merged_ranges = json.loads(merged_cells_json)
-        for merged_range in merged_ranges:
-            worksheet.merge_cells(merged_range)
-    except Exception as e:
-        print(f"Error applying merged cells: {e}")
-
-def apply_dimensions(worksheet, column_dimensions_json, row_dimensions_json):
-    """Apply column and row dimensions to the worksheet."""
-    try:
-        column_dimensions = json.loads(column_dimensions_json)
-        for col, properties in column_dimensions.items():
-            if col in worksheet.column_dimensions and properties.get("width"):
-                worksheet.column_dimensions[col].width = properties["width"]
-    except Exception as e:
-        print(f"Error applying column dimensions: {e}")
-    
-    try:
-        row_dimensions = json.loads(row_dimensions_json)
-        for row_str, properties in row_dimensions.items():
-            row = int(row_str)
-            if row in worksheet.row_dimensions and properties.get("height"):
-                worksheet.row_dimensions[row].height = properties["height"]
-    except Exception as e:
-        print(f"Error applying row dimensions: {e}")
 
 # ============================================================================
 # Phase 1: Data Identification
@@ -619,29 +352,21 @@ def identify_data():
                                 'cell': cell.coordinate,
                                 'value': cell_value
                             })
-                            print(f"  Potential external reference found in {file}, sheet {sheet_name}, cell {cell.coordinate}: {cell_value}")
                     
                     # Handle datetime objects for JSON serialization
                     if isinstance(cell_value, (datetime, date)):
                         cell_value = cell_value.isoformat()
                     
-                    # Store cell data
+                    # Store cell data - only value and formula status
                     sheet_data["cells"][cell.coordinate] = {
                         "value": cell_value,
-                        "is_formula": is_formula,
-                        "formatting": extract_cell_formatting(cell, enhanced_color=False)
+                        "is_formula": is_formula
                     }
             
             # Store sheet data in the workbook dictionary
             workbook_data[file]["sheets"][sheet_name] = sheet_data
         
         print(f"Completed processing file: {file}")
-    
-    # Output summary of potential references
-    if potential_references:
-        print("\nPotential External References Found:")
-        for ref in potential_references:
-            print(f"  {ref['file']} - Sheet: {ref['sheet']} - Cell: {ref['cell']} - Value: {ref['value']}")
     
     # Output summary
     print("\nData Identification Summary:")
@@ -657,7 +382,6 @@ def identify_data():
     with open('workbook_identification.json', 'w') as f:
         json.dump(workbook_data, f, indent=2, cls=DateTimeEncoder)
     
-    print("\nData identification complete. Results saved to workbook_identification.json.")
     return workbook_data
 
 # ============================================================================
@@ -723,7 +447,7 @@ def store_data(workbook_data=None):
                                     merged_cells, column_dimensions, row_dimensions)
             conn.commit()
             
-            # Store cell data and formatting
+            # Store cell data only (value and formula status)
             print(f"  Processing cells in sheet: {sheet_name}")
             for row in range(1, ws.max_row + 1):
                 for col in range(1, ws.max_column + 1):
@@ -748,16 +472,12 @@ def store_data(workbook_data=None):
                     if is_formula and new_base_path:
                         cell_value = fix_external_references(cell_value, excel_file_map)
                     
-                    # Extract formatting
-                    formatting_dict = extract_cell_formatting(cell, enhanced_color=True)
-                    
-                    # Store cell data
-                    insert_cell(cursor, sheet_id, cell.coordinate, cell_value, is_formula, formatting_dict)
+                    # Store cell data (without formatting)
+                    insert_cell(cursor, sheet_id, cell.coordinate, cell_value, is_formula)
             
             # For non-report sheets, also store as tabular data
             if sheet_type == "non_report":
                 try:
-                    # Generate a unique table name
                     base_name = os.path.splitext(os.path.basename(file))[0]
                     table_name = f"{base_name}_{sheet_name}".replace(" ", "_").replace("-", "_")
                     
@@ -781,26 +501,6 @@ def store_data(workbook_data=None):
         
         print(f"Completed processing file: {file}")
     
-    # Generate summary
-    cursor.execute("""
-        SELECT w.filename, COUNT(DISTINCT s.id) as sheet_count, 
-               SUM(CASE WHEN s.sheet_type = 'report' THEN 1 ELSE 0 END) as report_sheets,
-               SUM(CASE WHEN s.sheet_type = 'non_report' THEN 1 ELSE 0 END) as non_report_sheets,
-               COUNT(c.id) as cell_count
-        FROM workbooks w
-        JOIN sheets s ON w.id = s.workbook_id
-        LEFT JOIN cells c ON s.id = c.sheet_id
-        GROUP BY w.filename
-    """)
-    summary = cursor.fetchall()
-    
-    print("\nData Storage Summary:")
-    for row in summary:
-        filename, sheet_count, report_sheets, non_report_sheets, cell_count = row
-        print(f"\nFile: {filename}")
-        print(f"  Total sheets: {sheet_count} ({report_sheets} report, {non_report_sheets} non-report)")
-        print(f"  Total cells stored: {cell_count}")
-    
     # Close the database connection
     conn.commit()
     conn.close()
@@ -810,16 +510,13 @@ def store_data(workbook_data=None):
 # Phase 3: Data Recreation
 # ============================================================================
 def recreate_workbooks():
-    """Recreate workbooks from stored data."""
+    """Recreate workbooks from stored data with direct formatting copy."""
     print("\n" + "="*70)
-    print("PHASE 3: DATA RECREATION")
+    print("PHASE 3: DATA RECREATION WITH DIRECT FORMATTING COPY")
     print("="*70)
     
     # Access global configuration variables
     global excel_files, exclude_sheets, db_filename, output_dir, new_base_path
-    
-    print("Formula handling settings:")
-    print(f"  External reference path: {new_base_path if new_base_path else 'ORIGINAL PATHS'}")
     
     # Create mapping dictionary for Excel filenames
     excel_file_map = create_excel_file_map(excel_files)
@@ -830,10 +527,13 @@ def recreate_workbooks():
         '2': 'Loans Data Lite.xlsx',
         '3': 'Form X Report  Main Lite.xlsx'
     }
-    print("Workbook index mapping:")
-    for idx, filename in index_to_filename.items():
-        print(f"  [{idx}] -> {filename}")
-        
+    
+    # Load all source workbooks into memory for direct formatting access
+    source_workbooks = {}
+    for file in excel_files:
+        print(f"Loading source workbook: {file}")
+        source_workbooks[file] = load_workbook(file, data_only=False)
+    
     # Open database connection
     conn = sqlite3.connect(db_filename)
     cursor = conn.cursor()
@@ -878,126 +578,111 @@ def recreate_workbooks():
             print(f"  Recreating sheet: {sheet_name} (type: {sheet_type})")
             
             # Create the sheet
-            ws = new_wb.create_sheet(title=sheet_name)
+            new_ws = new_wb.create_sheet(title=sheet_name)
+            
+            # Get the source worksheet for direct formatting
+            source_ws = source_workbooks[file][sheet_name]
             
             # Apply merged cells
             if merged_cells:
-                apply_merged_cells(ws, merged_cells)
+                for merged_range in json.loads(merged_cells):
+                    new_ws.merge_cells(merged_range)
             
             # Apply dimensions
-            if column_dimensions and row_dimensions:
-                apply_dimensions(ws, column_dimensions, row_dimensions)
+            for col_key, properties in json.loads(column_dimensions).items():
+                if col_key in new_ws.column_dimensions and properties.get("width"):
+                    new_ws.column_dimensions[col_key].width = properties["width"]
+            
+            for row_key, properties in json.loads(row_dimensions).items():
+                row = int(row_key)
+                if row in new_ws.row_dimensions and properties.get("height"):
+                    new_ws.row_dimensions[row].height = properties["height"]
             
             # Populate sheet data
             cursor.execute("""
-                SELECT coordinate, value, is_formula, formatting
+                SELECT coordinate, value, is_formula
                 FROM cells
                 WHERE sheet_id = ?
             """, (sheet_id,))
             cells_data = cursor.fetchall()
             
             for cell_data in cells_data:
-                coordinate, value, is_formula, formatting = cell_data
+                coordinate, value, is_formula = cell_data
                 
                 # Set the cell value
                 if is_formula:
-                    # For formula cells, apply any path updates if needed
+                    # Handle formula cells
                     if new_base_path:
                         formula_value = fix_external_references(value, excel_file_map)
                     else:
                         formula_value = value
                     
-                    # Check if this is a sheet with special formula handling needs
-                    is_special_sheet = (sheet_name == "MIS-Report" or sheet_name == "Part I" or 
-                                        sheet_name == "Part II" or sheet_name == "Part III")
-                    
-                    # Check if this is an indexed reference formula
+                    # Special handling for indexed references in specific sheets
+                    is_special_sheet = sheet_name in ["MIS-Report", "Part I", "Part II", "Part III"]
                     has_indexed_ref = ('[1]' in value) or ('[2]' in value) or ('[3]' in value)
                     
                     try:
-                        # Special handling for indexed references like [1]Deposits!L:L
                         if is_special_sheet and has_indexed_ref:
-                            print(f"  Preserving indexed reference in {coordinate}: {value}")
-                            # For indexed references, it's better to set the value directly
-                            # Excel will resolve these correctly if workbooks are available
-                            ws[coordinate].value = formula_value
+                            # For indexed references, set value directly
+                            new_ws[coordinate].value = formula_value
+                        elif formula_value.startswith('='):
+                            # Standard formula
+                            new_ws[coordinate].value = None
+                            new_ws[coordinate].formula = formula_value[1:]
                         else:
-                            # Standard formula handling via openpyxl's formula property
-                            if formula_value.startswith('='):
-                                print(f"  Setting formula in {coordinate}: {formula_value}")
-                                # Clear the cell first to avoid any existing value interference
-                                ws[coordinate].value = None
-                                # Set the formula without the equals sign (openpyxl requirement)
-                                ws[coordinate].formula = formula_value[1:]
-                            else:
-                                # If formula doesn't start with equals but is marked as formula
-                                print(f"  Setting non-standard formula in {coordinate}: {formula_value}")
-                                ws[coordinate].value = None
-                                ws[coordinate].formula = formula_value
+                            # Non-standard formula
+                            new_ws[coordinate].value = None
+                            new_ws[coordinate].formula = formula_value
                     except Exception as e:
                         print(f"  Error setting formula in {coordinate}: {e}")
-                        # Fallback - set as text if formula application fails
-                        ws[coordinate].value = formula_value
+                        new_ws[coordinate].value = formula_value
                 else:
-                    # For non-formula cells, try to convert to appropriate data type
+                    # Handle non-formula cells
                     if value.lower() == 'true':
-                        ws[coordinate] = True
+                        new_ws[coordinate] = True
                     elif value.lower() == 'false':
-                        ws[coordinate] = False
+                        new_ws[coordinate] = False
                     else:
                         try:
-                            # Try to convert to number (int or float)
                             if value.isdigit():
-                                ws[coordinate] = int(value)
+                                new_ws[coordinate] = int(value)
                             else:
-                                ws[coordinate] = float(value)
+                                new_ws[coordinate] = float(value)
                         except (ValueError, TypeError):
-                            # If not a number, keep as string
-                            ws[coordinate] = value
+                            new_ws[coordinate] = value
                 
-                # Apply formatting
-                if formatting:
-                    apply_formatting(ws[coordinate], formatting)
+                # Direct copy of all formatting from the source cell
+                try:
+                    source_cell = source_ws[coordinate]
+                    copy_cell_formatting(source_cell, new_ws[coordinate])
+                except Exception as e:
+                    print(f"  Error copying formatting for {coordinate}: {e}")
         
         # Save the new workbook
         output_file = os.path.join(output_dir, f"{base_name}_recreated.xlsx")
         
         try:
-            # Before saving, add a special linked workbook index list for MIS-Report formulas
-            # This helps Excel properly resolve [1], [2], etc. references
+            # Add workbook links for MIS-Report formulas if needed
             if 'Form X Report' in file:
-                print(f"  Adding workbook links for indexed references...")
-                
-                # If the workbook doesn't have a defined name for external references,
-                # we need to create one to help Excel resolve [1], [2] references
-                try:
-                    # Try adding the workbooks to the existing links
-                    # (This is an approximation - full linking requires Excel's COM interface)
-                    links_sheet = new_wb.create_sheet(title="_Links", index=0)
-                    links_sheet["A1"] = "Workbook Index References"
-                    links_sheet["A2"] = "[1] = Deposits Data Lite.xlsx"
-                    links_sheet["A3"] = "[2] = Loans Data Lite.xlsx"
-                    links_sheet["A4"] = "[3] = Form X Report  Main Lite.xlsx"
-                    links_sheet["A6"] = "Note: These links help resolve formulas with [1], [2] references."
-                    links_sheet["A7"] = "You may need to update links manually in Excel: Data > Edit Links"
-                except Exception as e:
-                    print(f"  Could not create links helper sheet: {e}")
+                links_sheet = new_wb.create_sheet(title="_Links", index=0)
+                links_sheet["A1"] = "Workbook Index References"
+                links_sheet["A2"] = "[1] = Deposits Data Lite.xlsx"
+                links_sheet["A3"] = "[2] = Loans Data Lite.xlsx"
+                links_sheet["A4"] = "[3] = Form X Report  Main Lite.xlsx"
+                links_sheet["A6"] = "Note: These links help resolve formulas with [1], [2] references."
+                links_sheet["A7"] = "You may need to update links manually in Excel: Data > Edit Links"
             
             new_wb.save(output_file)
             print(f"Created new workbook: {output_file}")
-            
-            # Add a note about opening the file with Excel
-            print(f"NOTE: When opening {output_file}, Excel may prompt to update links.")
-            print("      Select 'Update' to refresh external references.")
-            
             recreated_files.append(output_file)
         except Exception as e:
             print(f"ERROR saving workbook {output_file}: {str(e)}")
-            print("This might be due to formula issues or locked file access.")
     
     # Close the database connection
     conn.close()
-    print("Data recreation complete.")
+    
+    # Clean up source workbooks
+    source_workbooks.clear()
     
     return recreated_files
 
@@ -1005,98 +690,62 @@ def recreate_workbooks():
 # Phase 4: Font Color Correction
 # ============================================================================
 def fix_workbook_fonts(recreated_files):
-    """Fix font colors in recreated workbooks."""
+    """Fix ONLY font colors in workbooks while preserving all other formatting."""
     print("\n" + "="*70)
     print("PHASE 4: FONT COLOR CORRECTION")
     print("="*70)
     
-    # Access global configuration variables
-    global output_dir
-    
     fixed_files = []
     
-    # Process each recreated file
     for file in recreated_files:
-        try:
-            if os.path.exists(file):
-                # Load the workbook
-                wb = load_workbook(file)
-                
-                # Process each sheet
-                for sheet_name in wb.sheetnames:
-                    print(f"  Processing sheet: {sheet_name}")
-                    ws = wb[sheet_name]
+        if not os.path.exists(file):
+            print(f"File not found: {file}")
+            continue
+            
+        print(f"Processing file: {file}")
+        
+        # Load the workbook
+        wb = load_workbook(file)
+        
+        # Process each sheet
+        for sheet_name in wb.sheetnames:
+            print(f"  Processing sheet: {sheet_name}")
+            ws = wb[sheet_name]
+            
+            # Process all cells
+            cells_modified = 0
+            for row in range(1, ws.max_row + 1):
+                for col in range(1, ws.max_column + 1):
+                    cell = ws.cell(row=row, column=col)
                     
-                    # Get the sheet dimensions
-                    max_row = ws.max_row
-                    max_col = ws.max_column
+                    # Skip empty cells
+                    if cell.value is None:
+                        continue
                     
-                    # Process all cells
-                    cells_modified = 0
-                    for row in range(1, max_row + 1):
-                        for col in range(1, max_col + 1):
-                            cell = ws.cell(row=row, column=col)
-                            
-                            # Skip empty cells
-                            if cell.value is None:
-                                continue
-                            
-                            # Get current font properties
-                            current_font = cell.font
-                            
-                            # Create a new font with the same properties but black color
-                            new_font = Font(
-                                name=current_font.name,
-                                size=current_font.size,
-                                bold=current_font.bold,
-                                italic=current_font.italic,
-                                underline=current_font.underline,
-                                color='000000'  # Set to black
-                            )
-                            
-                            # Apply the new font
-                            cell.font = new_font
-                            cells_modified += 1
+                    # Get current font properties and make a copy to modify
+                    current_font = cell.font
                     
-                    print(f"    Modified {cells_modified} cells")
-                
-                # Create output filename
-                base_name, ext = os.path.splitext(file)
-                output_file = f"{base_name}_fixed{ext}"
-                
-                # Save the modified workbook
-                wb.save(output_file)
-                print(f"Saved fixed file: {output_file}")
-                fixed_files.append(output_file)
-            else:
-                print(f"File not found: {file}")
-        except Exception as e:
-            print(f"Error processing {file}: {e}")
-    
-    print("\nFont Color Correction Summary:")
-    print(f"Processed {len(fixed_files)} files:")
-    for file in fixed_files:
-        print(f"  - {file}")
+                    try:
+                        # Make exact copy of current font but change color to black
+                        new_font = copy(current_font)
+                        new_font.color = "FF000000"  # Black with full opacity
+                        cell.font = new_font
+                        cells_modified += 1
+                    except Exception as e:
+                        print(f"    Error fixing font in cell {cell.coordinate}: {e}")
+            
+            print(f"    Modified {cells_modified} cells in {sheet_name}")
+        
+        # Create output filename
+        base_name, ext = os.path.splitext(file)
+        output_file = f"{base_name}_fixed{ext}"
+        
+        # Save the modified workbook
+        wb.save(output_file)
+        print(f"Saved fixed file: {output_file}")
+        fixed_files.append(output_file)
     
     return fixed_files
-
-def print_summary(excel_files, recreated_files, fixed_files, output_dir):
-    """Print a summary of the process results."""
-    print("\n" + "="*70)
-    print("PROCESS COMPLETED SUCCESSFULLY")
-    print("="*70)
-    print(f"Input Files: {len(excel_files)}")
-    print(f"Recreated Files: {len(recreated_files)}")
-    print(f"Fixed Files: {len(fixed_files)}")
-    print(f"Output Directory: {os.path.abspath(output_dir)}")
-    print(f"Completed at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    
-    print("\nIMPORTANT NOTES FOR USING RECREATED FILES:")
-    print("1. When opening workbooks with external references, Excel will prompt to update links")
-    print("2. Select 'Update' when prompted to ensure formulas display correct values")
-    print("3. If formulas show #VALUE! or appear blank, press F9 to recalculate")
-    print("4. For persistent issues, check Data > Edit Links to verify paths") 
-    print("5. Ensure all referenced files exist in the correct locations")
 
 # ============================================================================
 # Main Function
@@ -1125,8 +774,7 @@ def main():
     # Check if the Excel files actually exist
     for file in excel_files:
         if not os.path.exists(file):
-            print(f"WARNING: Input file '{file}' does not exist in the current directory.")
-            print(f"Current directory: {os.path.abspath('.')}")
+            print(f"WARNING: Input file '{file}' does not exist.")
             confirm = input("Continue anyway? (y/n): ")
             if confirm.lower() != 'y':
                 print("Process aborted.")
@@ -1139,14 +787,19 @@ def main():
         # Phase 2: Data Storage
         store_data(workbook_data)
         
-        # Phase 3: Data Recreation
+        # Phase 3: Data Recreation with Direct Formatting Copy
         recreated_files = recreate_workbooks()
         
         # Phase 4: Font Color Correction
         fixed_files = fix_workbook_fonts(recreated_files)
         
         # Final Summary
-        print_summary(excel_files, recreated_files, fixed_files, output_dir)
+        print("\n" + "="*70)
+        print("PROCESS COMPLETED SUCCESSFULLY")
+        print("="*70)
+        print(f"Input Files: {len(excel_files)}")
+        print(f"Recreated Files: {len(recreated_files)}")
+        print(f"Fixed Files: {len(fixed_files)}")
     
     except Exception as e:
         print("\n" + "="*70)
